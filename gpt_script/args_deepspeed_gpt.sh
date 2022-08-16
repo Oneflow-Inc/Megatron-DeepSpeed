@@ -1,6 +1,8 @@
 set -ex
 # bash args_deepspeed_gpt.sh 2 8 $MLP_ROLE_INDEX $MLP_WORKER_0_HOST 2 4 true true 80 1280
 
+export OMP_NUM_THREADS=1
+
 # volcengine.com
 export NCCL_IB_PCI_RELAXED_ORDERING=1
 
