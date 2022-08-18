@@ -76,6 +76,7 @@ bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 768
 bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
 
 # 若想测试不加zero的效果，则将语句中的args_deepspeed_gpt.sh替换成args_distributed_gpt.sh
+# 并 vim megatron/model/fused_softmax.py 将assert mask is None注释掉
 ```
 
 ## 复现LiBai+Zero的流程
