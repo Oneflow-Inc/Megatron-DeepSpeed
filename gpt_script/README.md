@@ -30,6 +30,20 @@ cd ..
 
 pip install transformers
 ```
+`vim megatron/training.py` 
+
+L798 添加吞吐输出
+```python
+log_string += ' tpt: {:.1f} samples/s |'.format(batch_size / elapsed_time_per_iteration)
+```
+L895 添加显存输出
+```python
+import os
+while iteration < args.train_iters:
+    if iteration == 101:
+        cmd = "nvidia-smi --query-gpu=timestamp,name,driver_version,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv"
+        os.system(cmd)
+```
 
 ### 准备数据集
 ```bash
@@ -49,12 +63,19 @@ python tools/preprocess_data.py \
 ```
 
 ### 运行测试
-将本仓库gpt_script路径下的 args_deepspeed_gpt.sh 和 args_deepspeed_gpt.sh 拷贝到 Megatron-DeepSpeed 仓库下
+将本仓库gpt_script路径下的 args_deepspeed_gpt.sh 和 args_distributed_gpt.sh 拷贝到 Megatron-DeepSpeed 仓库下
 
 以类脑vs008、vs009为例
 ```bash
-bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 32 512
-bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 32 1024
+# 用例1 2机分别运行
+bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 384
+bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 384
+
+# 用例2 2机分别运行
+bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 768
+bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
+
+# 若想测试不加zero的效果，则将语句中的args_deepspeed_gpt.sh替换成args_distributed_gpt.sh
 ```
 
 ## 复现LiBai+Zero的流程
@@ -93,12 +114,16 @@ class TrainerBase:
                     self.after_step()
 ```
 ### 运行测试
-将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/args_libai_gpt2.sh 拷贝至libai仓库的tools路径下，CMD增加zero相关的两行
-将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/gpt2_nl24_nah16_hs1024.py 拷贝至libai仓库的configs路径下，并修改数据集路径
-若想对比 LiBai的pipeline_stage_id优化 开启和关闭后的性能，则在 configs/gpt2_nl24_nah16_hs1024.py 中添加和注释掉如下行即可
-
+- 将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/args_libai_gpt2.sh 拷贝至libai仓库的tools路径下，CMD增加zero相关的两行
+- 将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/gpt2_nl24_nah16_hs1024.py 拷贝至libai仓库的configs路径下，并修改数据集路径
+- 若想对比 LiBai的pipeline_stage_id优化 开启和关闭后的性能，则在 configs/gpt2_nl24_nah16_hs1024.py 中添加和注释掉如下行即可
 `train.dist.custom_pipeline_stage_id =  [0] * 6 + [1] * 6 + [2] * 6 + [3] * 6`
 ```bash
-bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 0 "10.10.0.8" 2 4 true true 32 512
-bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 1 "10.10.0.8" 2 4 true true 60 1920
+# 用例1 2机分别运行
+bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 0 "10.10.0.8" 2 4 true true 24 384
+bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 1 "10.10.0.8" 2 4 true true 24 384
+
+# 用例2 2机分别运行
+bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 0 "10.10.0.8" 2 4 true true 24 768
+bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 1 "10.10.0.8" 2 4 true true 24 768
 ```
