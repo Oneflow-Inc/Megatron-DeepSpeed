@@ -116,6 +116,7 @@ class TrainerBase:
 ```
 ### 运行测试
 - 将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/args_libai_gpt2.sh 拷贝至libai仓库的tools路径下，CMD增加zero相关的两行
+- 注：在有模型并行或流水并行时，默认开启zero2，则仅通过修改stage=1来实现zero1是不行的，还需要注释掉`flow.boxing.nccl.enable_use_compute_stream(True)`，详情见 https://github.com/Oneflow-Inc/OneTeam/issues/1435#issuecomment-1219009112 另外，仅在纯数据并行且不带Acc的情况下，zero1才是一个正向优化 
 - 将 https://github.com/Oneflow-Inc/OneAutoTest/blob/main/libai/gpt2_nl24_nah16_hs1024.py 拷贝至libai仓库的configs路径下，并修改数据集路径
 - 若想对比 LiBai的pipeline_stage_id优化 开启和关闭后的性能，则在 configs/gpt2_nl24_nah16_hs1024.py 中添加和注释掉如下行即可
 `train.dist.custom_pipeline_stage_id =  [0] * 6 + [1] * 6 + [2] * 6 + [3] * 6`
