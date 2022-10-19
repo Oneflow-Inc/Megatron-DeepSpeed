@@ -25,7 +25,7 @@ LOG_PERIOD=${14:-100}
 CHECKPOINT_PATH=${15:-"checkpoints/gpt2"}
 VOCAB_FILE=${16:-"gpt2-vocab.json"}
 MERGE_FILE=${17:-"gpt2-merges.txt"}
-DATA_PATH=${18:-"my-gpt2_text_document"}
+DATA_PATH=${18:-"loss_compara_content_sentence"}
 
 
 SRC_DIR=$(realpath $(dirname $0)/)
@@ -81,10 +81,45 @@ DATA_ARGS=" \
 # --load $CHECKPOINT_PATH \
 
 
+ZERO_STAGE=1
+config_json="./ds_config.json"
+
+cat <<EOT > $config_json
+{
+  "train_micro_batch_size_per_gpu": $MICRO_BATCH_SIZE,
+  "train_batch_size": $GLOBAL_BATCH_SIZE,
+  "gradient_clipping": 1.0,
+  "zero_optimization": {
+    "stage": $ZERO_STAGE
+  },
+  "fp16": {
+    "enabled": true,
+    "loss_scale": 0,
+    "loss_scale_window": 500,
+    "hysteresis": 2,
+    "min_loss_scale": 1,
+    "initial_scale_power": 12
+  },
+  "steps_per_print": 2000,
+  "wall_clock_breakdown": false
+}
+EOT
+
+DEEPSPEED_ARGS=" \
+    --deepspeed \
+    --deepspeed_config ${config_json} \
+    --zero-stage ${ZERO_STAGE} \
+    --deepspeed-activation-checkpointing \
+    "
+
+export LOGLEVEL=WARNING
+# LAUNCHER="deepspeed -num_gpus $GPUS_PER_NODE"
+
 CMD="python3 -m torch.distributed.launch $DISTRIBUTED_ARGS ./pretrain_gpt.py \
     $GPT_ARGS \
     $OUTPUT_ARGS \
     $DATA_ARGS \
+    $DEEPSPEED_ARGS \
     --tensor-model-parallel-size $MP \
     --pipeline-model-parallel-size $PP \
     --DDP-impl local "
