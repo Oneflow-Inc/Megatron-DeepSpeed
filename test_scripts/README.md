@@ -45,6 +45,8 @@ while iteration < args.train_iters:
         os.system(cmd)
 ```
 
+`vim megatron/model/fused_softmax.py` 将assert mask is None注释掉
+
 ### 准备数据集
 - 如果用官方数据集
     ```bash
@@ -64,8 +66,7 @@ while iteration < args.train_iters:
     ```
 - 如果对齐libai的数据集
     ```bash
-    mkdir libai_dataset && cd libai_dataset && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/libai_megatron_dataset.tar && tar -xvf libai_megatron_dataset.tar && cd ..
-    ```
+    mkdir libai_dataset && cd libai_dataset && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/bert-base-chinese-vocab.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-merges.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-vocab.json && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.bin && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.idx && cd ..
 
 
 ### 运行测试
@@ -81,15 +82,12 @@ bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 384
 # 用例2 2机分别运行
 bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 768
 bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
-
-# 若想测试不加zero的效果，则将语句中的args_deepspeed_gpt.sh替换成args_distributed_gpt.sh
-# 并 vim megatron/model/fused_softmax.py 将assert mask is None注释掉
 ```
 
 - t5
 ```bash
-bash args_distributed_t5.sh 2 4 0 "11.11.1.25" 2 1 true true 24 384
-bash args_distributed_t5.sh 2 4 1 "11.11.1.25" 2 1 true true 24 384
+bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true true 24 384
+bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true true 24 384
 ```
 
 

@@ -24,7 +24,7 @@ TRAIN_ITERS=${13:-220}
 LOG_PERIOD=${14:-100}
 CHECKPOINT_PATH=${15:-"checkpoints/t5"}
 VOCAB_FILE=${16:-"./libai_dataset/bert-base-chinese-vocab.txt"}
-DATA_PATH=${18:-"./libai_dataset/loss_compara_content_sentence"}
+DATA_PATH=${17:-"./libai_dataset/loss_compara_content_sentence"}
 
 
 SRC_DIR=$(realpath $(dirname $0)/)
