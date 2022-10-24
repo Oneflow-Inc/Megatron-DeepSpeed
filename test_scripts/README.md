@@ -10,6 +10,8 @@
 ```bash
 ## 参考 https://github.com/bigscience-workshop/Megatron-DeepSpeed
 
+python3 -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
 # 克隆仓库
 git clone https://github.com/bigscience-workshop/Megatron-DeepSpeed.git
 cd Megatron-DeepSpeed
@@ -17,7 +19,6 @@ cd Megatron-DeepSpeed
 # 安装apex
 git clone https://github.com/NVIDIA/apex
 cd apex
-python3 -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 
 # 安装deepspeed
@@ -48,7 +49,11 @@ while iteration < args.train_iters:
 `vim megatron/model/fused_softmax.py` 将assert mask is None注释掉
 
 ### 准备数据集
-- 如果用官方数据集
+- 如果对齐libai的数据集
+    ```bash
+    mkdir libai_dataset && cd libai_dataset && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/bert-base-chinese-vocab.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-merges.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-vocab.json && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.bin && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.idx && cd ..
+
+- 如果用官方数据集（详见https://github.com/bigscience-workshop/Megatron-DeepSpeed），以GPT为例：
     ```bash
     wget https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz
     wget https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-vocab.json
@@ -64,17 +69,18 @@ while iteration < args.train_iters:
         --append-eod \
         --workers 8
     ```
-- 如果对齐libai的数据集
-    ```bash
-    mkdir libai_dataset && cd libai_dataset && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/bert-base-chinese-vocab.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-merges.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-vocab.json && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.bin && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.idx && cd ..
 
 
 ### 运行测试
-将本仓库test_scripts路径下的 `args_deepspeed_gpt.sh`, `args_distributed_gpt.sh`, `args_deepspeed_t5.sh`, `args_distributed_t5.sh` 拷贝到 Megatron-DeepSpeed 仓库下
+将本仓库test_scripts路径下的 `args_deepspeed_gpt.sh`,  `args_deepspeed_t5.sh` 拷贝到 Megatron-DeepSpeed 仓库下
+
+如果没用到流水并行，则需要注释掉 `DEEPSPEED_ARGS` 中关于deepspeed的三行
+
+如果也没有用到zero，则需要注释掉CMD中的 `$DEEPSPEED_ARGS`
 
 - gpt
-以类脑vs008、vs009为例
 ```bash
+## 以类脑008 009为例
 # 用例1 2机分别运行
 bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 384
 bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 384
@@ -86,8 +92,8 @@ bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
 
 - t5
 ```bash
-bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true true 24 384
-bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true true 24 384
+bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true true 16 512
+bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true true 16 512
 ```
 
 
@@ -141,8 +147,21 @@ class TrainerBase:
     bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 0 "10.10.0.8" 2 4 true true 24 768
     bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 1 "10.10.0.8" 2 4 true true 24 768
     ```
-- t5
+- projects/T5
+
+    调换libai仓库中的mt5_pretrain.py，改为当前页面下的mt5_pretrain，这个配置是和megatron官方对齐的。libai用main分支测就可以。
+
+    如果想在控制台log里输出 `build model time`，则 `vim libai/engine/default.py` 在 `self.model = self.build_model(cfg)` 前后，修改成：
+    ```python
+    s = time.time()
+    self.model = self.build_model(cfg)
+    e = time.time()
+    logger.info("build model time ------------------------------------------:{}".format(e-s))
+    ```
+
+    数据集按照 https://github.com/Oneflow-Inc/libai/tree/main/projects/T5 下的第三点准备好
+
     ```bash
-    bash tools/args_libai_t5.sh configs/t5_nl12_nah12_hs768.py 2 4 0 192.168.1.25 2 1 true true 16 512
-    bash tools/args_libai_t5.sh configs/t5_nl12_nah12_hs768.py 2 4 1 192.168.1.25 2 1 true true 16 512
+    NODE=2 NODE_RANK=0 ADDR=11.11.1.25 bash tools/train.sh tools/train_net.py projects/T5/configs/mt5_pretrain.py 4
+    NODE=2 NODE_RANK=1 ADDR=11.11.1.25 bash tools/train.sh tools/train_net.py projects/T5/configs/mt5_pretrain.py 4
     ```
