@@ -53,48 +53,32 @@ while iteration < args.train_iters:
     ```bash
     mkdir libai_dataset && cd libai_dataset && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/bert-base-chinese-vocab.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-merges.txt && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/gpt2-vocab.json && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.bin && wget https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/libai/dataset/loss_compara_content_sentence.idx && cd ..
 
-- 如果用官方数据集（详见https://github.com/bigscience-workshop/Megatron-DeepSpeed），以GPT为例：
-    ```bash
-    wget https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz
-    wget https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-vocab.json
-    wget https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-merges.txt
-    xz -d oscar-1GB.jsonl.xz
-    python tools/preprocess_data.py \
-        --input oscar-1GB.jsonl \
-        --output-prefix my-gpt2 \
-        --vocab gpt2-vocab.json \
-        --dataset-impl mmap \
-        --tokenizer-type GPT2BPETokenizer \
-        --merge-file gpt2-merges.txt \
-        --append-eod \
-        --workers 8
-    ```
-
 
 ### 运行测试
 将本仓库test_scripts路径下的 `args_deepspeed_gpt.sh`,  `args_deepspeed_t5.sh` 拷贝到 Megatron-DeepSpeed 仓库下
 
-如果没用到流水并行，则需要注释掉 `DEEPSPEED_ARGS` 中关于deepspeed的三行
+如果没用到流水并行但开zero，则 `vim megatron/training.py`, 将L511和L1060的 `if args.deepspeed:` 修改为 `if args.deepspeed and isinstance(model[0], deepspeed.PipelineEngine):`
 
-如果也没有用到zero，则需要注释掉CMD中的 `$DEEPSPEED_ARGS`
+如果关zero，则需要注释掉CMD中的 `$DEEPSPEED_ARGS`
 
 - gpt
-```bash
-## 以类脑008 009为例
-# 用例1 2机分别运行
-bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 384
-bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 384
+    ```bash
+    ## 以类脑008 009为例
+    # 用例1 2机分别运行
+    bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 384
+    bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 384
 
-# 用例2 2机分别运行
-bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 768
-bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
-```
+    # 用例2 2机分别运行
+    bash args_deepspeed_gpt.sh 2 8 0 "10.10.0.8" 2 4 true true 24 768
+    bash args_deepspeed_gpt.sh 2 8 1 "10.10.0.8" 2 4 true true 24 768
+    ```
 
 - t5
-```bash
-bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true true 16 512
-bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true true 16 512
-```
+
+    ```bash
+    bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true false 16 512
+    bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true false 16 512
+    ```
 
 
 ## 复现LiBai+Zero的流程
@@ -132,12 +116,13 @@ class TrainerBase:
                     self.after_step()
 ```
 ### 运行测试
-- 将 https://github.com/Oneflow-Inc/OneAutoTest/ 仓库libai路径下的 `args_libai_gpt2.sh` 和 `args_libai_t5.sh` 拷贝至libai仓库的tools路径下，CMD考虑是否增加zero相关的两行
-- 注：在有模型并行或流水并行时，默认开启zero2，则仅通过修改stage=1来实现zero1是不行的，还需要注释掉`flow.boxing.nccl.enable_use_compute_stream(True)`，详情见 https://github.com/Oneflow-Inc/OneTeam/issues/1435#issuecomment-1219009112 另外，仅在纯数据并行且不带Acc的情况下，zero1才是一个正向优化 
-- 将 https://github.com/Oneflow-Inc/OneAutoTest/ 仓库libai路径下的 `gpt2_nl24_nah16_hs1024.py` 和 `t5_nl12_nah12_hs768.py` 拷贝至libai仓库的configs路径下，并修改数据集路径
-- 若想对比 LiBai的pipeline_stage_id优化 开启和关闭后的性能，则在 configs/gpt2_nl24_nah16_hs1024.py 中添加和注释掉如下行即可
-`train.dist.custom_pipeline_stage_id =  [0] * 6 + [1] * 6 + [2] * 6 + [3] * 6`
 - gpt
+  - 将 https://github.com/Oneflow-Inc/OneAutoTest/ 仓库libai路径下的 `args_libai_gpt2.sh` 拷贝至libai仓库的tools路径下，CMD考虑是否增加zero相关的两行
+  - 注：在有模型并行或流水并行时，默认开启zero2，则仅通过修改stage=1来实现zero1是不行的，还需要注释掉`flow.boxing.nccl.enable_use_compute_stream(True)`，详情见 https://github.com/Oneflow-Inc/OneTeam/issues/1435#issuecomment-1219009112 另外，仅在纯数据并行且不带Acc的情况下，zero1才是一个正向优化 
+  - 将 https://github.com/Oneflow-Inc/OneAutoTest/ 仓库libai路径下的 `gpt2_nl24_nah16_hs1024.py` 拷贝至libai仓库的configs路径下，并修改数据集路径
+  - 若想对比 LiBai的pipeline_stage_id优化 开启和关闭后的性能，则在 configs/gpt2_nl24_nah16_hs1024.py 中添加和注释掉如下行即可
+  `train.dist.custom_pipeline_stage_id =  [0] * 6 + [1] * 6 + [2] * 6 + [3] * 6`
+
     ```bash
     # 用例1 2机分别运行
     bash tools/args_libai_gpt2.sh configs/gpt2_nl24_nah16_hs1024.py 2 8 0 "10.10.0.8" 2 4 true true 24 384
@@ -150,6 +135,8 @@ class TrainerBase:
 - projects/T5
 
     调换libai仓库中的mt5_pretrain.py，改为当前页面下的mt5_pretrain，这个配置是和megatron官方对齐的。libai用main分支测就可以。
+
+    调换libai仓库中的tools/train.sh为当前页面下的train.sh，里面添加了几个环境变量和output_dir。跑wenxiao的分支需要 `export SBP_INFER_RULE_TAG=2`
 
     如果想在控制台log里输出 `build model time`，则 `vim libai/engine/default.py` 在 `self.model = self.build_model(cfg)` 前后，修改成：
     ```python
