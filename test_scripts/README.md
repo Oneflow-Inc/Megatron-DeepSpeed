@@ -57,7 +57,7 @@ while iteration < args.train_iters:
 ### 运行测试
 将本仓库test_scripts路径下的 `args_deepspeed_gpt.sh`,  `args_deepspeed_t5.sh` 拷贝到 Megatron-DeepSpeed 仓库下
 
-如果没用到流水并行但开zero，则 `vim megatron/training.py`, 将L511和L1060的 `if args.deepspeed:` 修改为 `if args.deepspeed and isinstance(model[0], deepspeed.PipelineEngine):`
+如果用例没用到流水并行但脚本中又加了 `$DEEPSPEED_ARGS`，则 `vim megatron/training.py`, 将L511和L1060的 `if args.deepspeed:` 修改为 `if args.deepspeed and isinstance(model[0], deepspeed.PipelineEngine):`
 
 如果关zero，则需要注释掉CMD中的 `$DEEPSPEED_ARGS`
 
@@ -76,8 +76,8 @@ while iteration < args.train_iters:
 - t5
 
     ```bash
-    bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true false 16 512
-    bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true false 16 512
+    bash args_deepspeed_t5.sh 2 4 0 "11.11.1.25" 2 1 true false 4 128
+    bash args_deepspeed_t5.sh 2 4 1 "11.11.1.25" 2 1 true false 4 128
     ```
 
 
@@ -134,11 +134,11 @@ class TrainerBase:
     ```
 - projects/T5
 
-    调换libai仓库中的mt5_pretrain.py，改为当前页面下的mt5_pretrain，这个配置是和megatron官方对齐的。libai用main分支测就可以。
+    调换libai仓库中的mt5_pretrain.py，改为当前页面下的mt5_pretrain，这个配置是和megatron官方对齐的。
 
-    调换libai仓库中的tools/train.sh为当前页面下的train.sh，里面添加了几个环境变量和output_dir。跑wenxiao的分支需要 `export SBP_INFER_RULE_TAG=2`
+    调换libai仓库中的tools/train.sh为当前页面下的train.sh，里面添加了几个环境变量和output_dir。跑wenxiao的分支需要 `export SBP_INFER_RULE_TAG=2`。跑libai的nsys可以加个参数 `--delay=500` 表示延迟XX秒统计，megatron不需要加这个，因为跑的很快。nsys跑5个iter就可以。
 
-    如果想在控制台log里输出 `build model time`，则 `vim libai/engine/default.py` 在 `self.model = self.build_model(cfg)` 前后，修改成：
+    编译时间相关：如果想在控制台log里输出 `build model time`，则 `vim libai/engine/default.py` 在 `self.model = self.build_model(cfg)` 前后，修改成：
     ```python
     s = time.time()
     self.model = self.build_model(cfg)
@@ -146,7 +146,7 @@ class TrainerBase:
     logger.info("build model time ------------------------------------------:{}".format(e-s))
     ```
 
-    数据集按照 https://github.com/Oneflow-Inc/libai/tree/main/projects/T5 下的第三点准备好
+    数据集：跑projects/T5需要用另一种格式的数据集，不用先前一直用到的libai_dataset。按照 https://github.com/Oneflow-Inc/libai/tree/main/projects/T5 下的第三点准备好
 
     ```bash
     NODE=2 NODE_RANK=0 ADDR=11.11.1.25 bash tools/train.sh tools/train_net.py projects/T5/configs/mt5_pretrain.py 4
