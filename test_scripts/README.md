@@ -61,6 +61,8 @@ while iteration < args.train_iters:
 
 如果关zero，则需要注释掉CMD中的 `$DEEPSPEED_ARGS`
 
+如果是在25机（4卡）和28机（8卡）上跑2机4卡的测试，则可以将28机的 `megatron/initialize.py`中L270的 `device_count = torch.cuda.device_count()` 改为 `device_count = 4`
+
 - gpt
     ```bash
     ## 以类脑008 009为例
