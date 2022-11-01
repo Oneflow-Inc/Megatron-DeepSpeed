@@ -23,9 +23,9 @@ RUN_COMMIT=${12:-"01b1d32"}
 TRAIN_ITERS=${13:-220}
 LOG_PERIOD=${14:-100}
 CHECKPOINT_PATH=${15:-"checkpoints/gpt2"}
-VOCAB_FILE=${16:-"gpt2-vocab.json"}
-MERGE_FILE=${17:-"gpt2-merges.txt"}
-DATA_PATH=${18:-"loss_compara_content_sentence"}
+VOCAB_FILE=${16:-"libai_dataset/gpt2-vocab.json"}
+MERGE_FILE=${17:-"libai_dataset/gpt2-merges.txt"}
+DATA_PATH=${18:-"libai_dataset/loss_compara_content_sentence"}
 
 
 SRC_DIR=$(realpath $(dirname $0)/)
